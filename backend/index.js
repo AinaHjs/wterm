@@ -31,11 +31,12 @@ async function connectToWterm() {
         // Check connection state changes
         if (connection === 'close') {
 
-            //check why is it closed
+            //Check why is it closed
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
 
             console.log('Connection closed because of :',lastDisconnect?.error,' reconnect',shouldReconnect);
 
+            // If this is closed then try to reconnect.
             if (shouldReconnect) {
                 console.log("Trying to reconnect...");
                 connectToWterm();

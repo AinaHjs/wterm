@@ -9,9 +9,9 @@ async function connectToWterm() {
     const {state,saveCreds} = await useMultiFileAuthState ('auth_info_baileys');
 
     // Initialize W socket
-    const sock = makeWASocket.default({
-        auth= state,
-        printQRInTerminal= false,
+    const sock = makeWASocket({
+        auth : state,
+        printQRInTerminal : false,
     });
 
 

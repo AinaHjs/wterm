@@ -48,3 +48,57 @@ class wterminal(cmd.Cmd):
             except Exception:
                 self.ws = None
                 await asyncio.sleep(3)
+
+    def do_chats(self, arg):
+        """Affiche la liste des discussions récentes. Usage: chats"""
+        print("[*] Récupération des discussions...")
+        # Plus tard, on demandera la liste au backend via WebSocket
+        print("1. +33612345678 (Sacha)")
+        print("2. +33698765432 (Maman)")
+
+    def do_read(self, arg):
+        """Lit l'historique d'une discussion. Usage: read <numéro_ou_JID>"""
+        if not arg:
+            print("[-] Erreur: Spécifiez un numéro. Exemple: read 1")
+            return
+        print(f"[*] Lecture des derniers messages de la discussion {arg}...")
+        # Simulation
+        print("[Sacha]: Salut, t'es là ?")
+        print("[Moi]: Ouaip, en plein dev.")
+
+    def do_send(self, arg):
+        """Envoie un message. Usage: send <numéro> <votre message>"""
+        parts = arg.split(" ", 1)
+        if len(parts) < 2:
+            print("[-] Erreur: Syntaxe incorrecte. Exemple: send 1 Salut ça va ?")
+            return
+        
+        target, text = parts[0], parts[1]
+        print(f"[*] Envoi du message à [{target}]...")
+
+        if self.ws:
+            payload = {
+                "action": "send_message",
+                "to": "1234567890@s.whatsapp.net",  # Géré dynamiquement plus tard
+                "text": text
+            }
+            # On utilise la boucle réseau d'arrière-plan pour envoyer de manière thread-safe
+            asyncio.run_coroutine_threadsafe(self.ws.send(json.dumps(payload)), self.loop)
+            print("[+] Message envoyé avec succès.")
+        else:
+            print("[-] Erreur: Le backend est hors-ligne.")
+
+    def do_exit(self, arg):
+        """Quitte proprement l'application. Usage: exit"""
+        print("[*] Fermeture de wterminal...")
+        return True  # Retourner True arrête la boucle cmd.Cmd
+
+    # Alias pour quitter
+    do_quit = do_exit
+
+
+if __name__ == '__main__':
+    try:
+        wterminal().cmdloop()
+    except KeyboardInterrupt:
+        print("\n[*] Interruption détectée. Fermeture.")

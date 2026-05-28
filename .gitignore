@@ -1,12 +1,12 @@
 # Dépendances
-node_modules/
-__pycache__/
-.venv
+#node_modules/
+#__pycache__/
+#.venv
 
 # Données de session whatsapp (Baileys)
-backend\auth_info_baileys
+#backend\auth_info_baileys
 
 # Fichiers de configuration et logs
-.env
-*.db
-*.log
+#.env
+#*.db
+#*.log

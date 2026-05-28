@@ -8,7 +8,7 @@ import pino from 'pino';
  * - 
  */
 
-/** INITIALISATION DU WEBSOCKET */
+/** INITIALISATION DU WEBSOCKET POUR PYTHON ET NODE */
 const wss = new WebSocketServer({port:8088});
 console.log(`[+] The node server is listenning on port : 8088`)
 let pythonClient = null;
@@ -24,7 +24,7 @@ wss.on('connection', async (ws) => {
             const parsed_message = JSON.parse(message); 
             
             if (parsed_message.action === 'SEND_MESSAGE' && parsed_message.to && parsed_message.text) {
-                // await sock.sendMessage(parsed_message.to, {text:parsed_message.text})
+                await sock.sendMessage(parsed_message.to, {text:parsed_message.text})
                 console.log(`[+] Message sent to : ${parsed_message.to}`);
             }
         } catch (error) {
@@ -38,5 +38,15 @@ wss.on('connection', async (ws) => {
         pythonClient = null;
     });
 
-
 });
+
+/** INITIALISATION DU WEBSOCKET WA AVEC BAILEYS */
+const {state, saveCreds} = await useMultiFileAuthState('auth_info_baileys');
+
+const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true,
+    logger: pino({level : 'silent'}),
+})
+
+

@@ -50,5 +50,15 @@ class WTerminal (cmd.Cmd):
                     asyncio.sleep(2)
                     print(f"[!] Error occured : {e}")
 
+    def do_chats(self, arg):
+        print("[+] List of chats : ")
+    
+    def do_read(self, arg):
+
+        if not arg:
+            print("[!] Syntax error : ")
+            return
+
+
 
 asyncio.run(connect_to_backend())

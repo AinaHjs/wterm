@@ -7,8 +7,27 @@ import cmd
 
 
 class WTerminal(cmd.Cmd):
-    intro = """ Welcome to WTerminal """
-    prompt = "wterminal >_ :"
+    intro = r""" 
+
+██╗    ██╗████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     
+██║    ██║╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║     
+██║ █╗ ██║   ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║     
+██║███╗██║   ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║     
+╚███╔███╔╝   ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗
+ ╚══╝╚══╝    ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
+                                                           
+          
+              [ WhatsApp Client for CLI ]  -  v1.0.0 (Alpha)
+
+    
+   +--------------------------------------------------------------------+
+   |                                                                    |
+   |           ---> Type /help to see available commands <---           |
+   |                                                                    |
+   +--------------------------------------------------------------------+
+
+    """
+    prompt = "WTerminal >_ : "
 
     def __init__(self):
         super().__init__()
@@ -29,7 +48,7 @@ class WTerminal(cmd.Cmd):
         # Se connecter au websocket génerer par le backend
         async with websockets.connect(uri) as ws:
             self.ws = ws
-            print("[+] Connected to the backend")
+            print("\n\n[+] Connected to the backend")
 
             while True:
                 try:
@@ -37,12 +56,13 @@ class WTerminal(cmd.Cmd):
                     data = json.loads(message)
 
                     if data["type"] == "QR":
-                        print("[+] Please scan QR code\n\n")
 
                         if self.qr_locked:
                             return
 
                         self.qr_locked = True
+
+                        print("\n[+] Please scan QR code\n\n")
 
                         # Afficher le code QR en utilisant le module qrcode
                         qr = qrcode.QRCode(border=1)

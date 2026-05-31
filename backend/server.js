@@ -4,16 +4,11 @@ import pino from 'pino';
 import QRCode from 'qrcode-terminal';
 
 
-/**
- * - La première chose à faire c'est initialiser une connexion Websockets et gérer les connexions entrantes.
- * - 
- */
+
 
 /** INITIALISATION DES VARIABLES GLOBALES */
 let pythonClient = null;
 let sock = null;
-
-
 
 /** INITIALISATION DU WEBSOCKET WA AVEC BAILEYS */
 async function connectToWA() {
@@ -48,7 +43,6 @@ async function connectToWA() {
             const need_to_reconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
 
             if(need_to_reconnect) {
-                console.log(`[-] Connection to WA was lost...`);
                 console.log(`[+] Trying to reconnect...`)
                 connectToWA();
             }
@@ -57,6 +51,30 @@ async function connectToWA() {
 
     /** Sauvegarde automatique des creds */
     sock.ev.on('creds.update',saveCreds);
+
+    sock.ev.on('messages.upsert', async (m) => {
+            if (m.type === 'notify') {
+                for (const msg of m.messages) {
+                    if (!msg.key.fromMe) {
+                        const jID = msg.key.remoteJid;
+                        const name = msg.pushName;
+                        const text = msg.message?.conversation || msg.message.extendedTextMessage;
+
+                        if (text && pythonClient) {
+                            const messageObject = {
+                                event: 'NEW_MESSAGE',
+                                sender_name : name,
+                                sender_id : jID,
+                                text: text,
+                                date : msg.messageTimestamp,
+                            };
+                            const messagePayload = JSON.stringify(messageObject);
+                            pythonClient.send(messagePayload);
+                        }
+                    }
+                }
+            }
+    })
 }
 
 /** INITIALISATION DU WEBSOCKET POUR PYTHON ET NODE */

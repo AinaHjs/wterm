@@ -4,6 +4,7 @@ import qrcode
 import json
 import threading
 import cmd
+import os
 
 
 class WTerminal(cmd.Cmd):
@@ -31,12 +32,15 @@ class WTerminal(cmd.Cmd):
 
     def __init__(self):
         super().__init__()
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.contact_file = os.path.join(current_dir, 'contacts.json')
         self.ws = None
         self.loop = asyncio.new_event_loop()
         self.net_threading = None
         self.qr_locked = False
+        self.contacts = self.load_contacts()
 
-    #
+    # Start network loop using asyncio
     def start_net_loop(self):
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self.connect_to_backend())
@@ -48,7 +52,7 @@ class WTerminal(cmd.Cmd):
         try:
             # Connect to websocket
             self.ws = await websockets.connect(uri)
-            print("\n[-] The app is now connected to the backend")
+            print("\n[-] The app is now connected to the backend\n")
 
             while True:
                 try:
@@ -63,7 +67,7 @@ class WTerminal(cmd.Cmd):
 
                         # Only print one QRCode on the screen
                         self.qr_locked = True
-                        print("\n[+] Please scan QR code\n\n")
+                        print("\n[+] Please scan QR code\n")
 
                         # Draw QRCode usin qrcode module
                         qr = qrcode.QRCode(border=1)
@@ -75,11 +79,11 @@ class WTerminal(cmd.Cmd):
                         print(f"[+] Status : {data['data']}")
 
                 except Exception as e:
-                    print(f"[!] Error occured : {e}")
+                    print(f"\n[!] Error occured : {e}\n")
                     break
 
         except Exception as e:
-            print(f"\n[-] Connection failed : {e}")
+            print(f"\n[-] Connection failed : {e}\n")
 
         # Clean and reconnect when an error is occured
         await self.clean_and_reconnect()
@@ -89,7 +93,7 @@ class WTerminal(cmd.Cmd):
             await self.ws.close()
         self.ws = None
         await asyncio.sleep(2)
-        print("[+] Reconnecting to the backend...")
+        print("\n[+] Reconnecting to the backend...\n")
         await self.connect_to_backend()
 
     # Alert for new message
@@ -112,7 +116,7 @@ class WTerminal(cmd.Cmd):
                     print(self.prompt, end="", flush=True)
 
         except Exception as e:
-            print(f"[!] Error occured : {e}")
+            print(f"\n[!] Error occured : {e}\n")
 
     # Connect to the backend
     def do_connect(self, arg):
@@ -122,7 +126,7 @@ class WTerminal(cmd.Cmd):
             )
             self.net_threading.start()
         except Exception as e:
-            print(f"[!] Error occured : {e}")
+            print(f"\n[!] Error occured : {e}\n")
 
     # Chats as a list [chats]
     def do_chats(self, arg):
@@ -131,7 +135,7 @@ class WTerminal(cmd.Cmd):
     # Read message [read 1]
     def do_read(self, arg):
         if not arg:
-            print("[!] Syntax error : Try read 1 instead.")
+            print("\n[!] Syntax error : Try read 1 instead.\n")
             return
 
         print("[-] Lists of message :")
@@ -141,7 +145,7 @@ class WTerminal(cmd.Cmd):
         parts = arg.split(" ", 1)
 
         if len(parts) < 2:
-            print(" [!] Syntax error : Try send 1 message instead.")
+            print("\n[!] Syntax error : Try send 1 message instead.\n")
             return
 
         target, message = parts[0], parts[1]
@@ -179,4 +183,4 @@ if __name__ == "__main__":
     try:
         WTerminal().cmdloop()
     except KeyboardInterrupt:
-        print("[-] WTerminal is closed")
+        print("\n[-] WTerminal is closed\n")

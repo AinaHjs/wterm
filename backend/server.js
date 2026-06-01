@@ -90,6 +90,7 @@ function create_ws() {
 
         // On message
         ws.on('message', async (message) => {
+
             try {
                 const parsed_message = JSON.parse(message); 
                 
@@ -97,6 +98,7 @@ function create_ws() {
                     await sock.sendMessage(parsed_message.to, {text:parsed_message.text})
                     console.log(`[+] Message sent to : ${parsed_message.to}`);
                 }
+                
             } catch (error) {
                 console.error(`[!] An error occured : ${error}`);
             }

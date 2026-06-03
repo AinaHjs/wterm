@@ -33,12 +33,39 @@ class WTerminal(cmd.Cmd):
     def __init__(self):
         super().__init__()
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.contact_file = os.path.join(current_dir, 'contacts.json')
+        self.contact_file = os.path.join(current_dir, "contacts.json")
         self.ws = None
         self.loop = asyncio.new_event_loop()
         self.net_threading = None
         self.qr_locked = False
         self.contacts = self.load_contacts()
+
+    # CONTACT SYSTEM
+
+    # Load contact
+    def load_contacts(self):
+        if os.path.exists(self.contact_file):
+            try:
+                with open(self.contact_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"\n[!] Can't read contact : {e}")
+        return {}
+
+    # Save contact
+    def save_contact(self):
+        try:
+            with open(self.contact_file, "w", encoding="utf-8") as f:
+                json.dumps(self.contacts, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            print(f"\n[!] Error occured when trying to save : {e}")
+
+    # Get name from id
+    def get_name_from_id(self, sender_id):
+        for aliase, jID in self.contacts.items():
+            if jID == sender_id:
+                return f"{aliase.upper()}"
+        return sender_id
 
     # Start network loop using asyncio
     def start_net_loop(self):

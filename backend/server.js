@@ -2,6 +2,8 @@ import makeWASocket, {useMultiFileAuthState, DisconnectReason} from "@whiskeysoc
 import { WebSocketServer } from "ws";
 import pino from 'pino';
 import QRCode from 'qrcode-terminal';
+import fs from 'fs';
+import path from 'path';
 
 
 
@@ -9,6 +11,7 @@ import QRCode from 'qrcode-terminal';
 /** INITIALISATION DES VARIABLES GLOBALES */
 let pythonClient = null;
 let sock = null;
+const ROOT_DIR = path.resolve(__dirname, '..', '..');
 
 /** INITIALISATION DU WEBSOCKET WA AVEC BAILEYS */
 async function connectToWA() {
@@ -59,6 +62,12 @@ async function connectToWA() {
                         const jID = msg.key.remoteJid;
                         const name = msg.pushName;
                         const text = msg.message?.conversation || msg.message.extendedTextMessage;
+                        const newMsgFilePath = path.join(
+                            ROOT_DIR,
+                            'Frontend',
+                            'Messages',
+                            `${}.txt`
+                        );
 
                         if (text && pythonClient) {
                             const messageObject = {

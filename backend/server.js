@@ -4,6 +4,7 @@ import pino from 'pino';
 import QRCode from 'qrcode-terminal';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from "url";
 
 
 
@@ -11,7 +12,8 @@ import path from 'path';
 /** INITIALISATION DES VARIABLES GLOBALES */
 let pythonClient = null;
 let sock = null;
-const ROOT_DIR = path.resolve(__dirname, '..', '..');
+const __filename = fileURLToPath(import.meta.url)
+const ROOT_DIR = path.resolve(__filename);
 
 /** INITIALISATION DU WEBSOCKET WA AVEC BAILEYS */
 async function connectToWA() {
@@ -59,26 +61,64 @@ async function connectToWA() {
             if (m.type === 'notify') {
                 for (const msg of m.messages) {
                     if (!msg.key.fromMe) {
+                        let senderContactName = null;
                         const jID = msg.key.remoteJid;
                         const name = msg.pushName;
-                        const text = msg.message?.conversation || msg.message.extendedTextMessage;
-                        const newMsgFilePath = path.join(
+                        const text = msg.message?.conversation || msg.message?.extendedTextMessage;
+                        const msgDate = msg.messageTimestamp
+                        const contactsFilePath = path.join(
                             ROOT_DIR,
                             'Frontend',
-                            'Messages',
-                            `${}.txt`
+                            'contacts.json'
                         );
+                        const contacts = JSON.parse(
+                            fs.readFileSync(
+                                contactsFilePath,
+                                "utf8"
+                            )
+                        );
+                        for(const key in Object.keys(contacts)){
+                            if (key === jID){
+                                senderContactName = key;
+                            };
+                        };
 
                         if (text && pythonClient) {
+                            let newMessageModel = `[${msgDate}] - ${name} \n ${text}`;
+                            const newMsgFilePath = path.join(
+                                ROOT_DIR,
+                                'Frontend',
+                                'Messages',
+                                `${senderContactName}.txt`
+                            );
+                            const newMsgListFilePath = path.join(
+                                ROOT_DIR,
+                                'Frontend',
+                                'Messages',
+                                'newMessageList.txt'
+                            );
                             const messageObject = {
                                 event: 'NEW_MESSAGE',
                                 sender_name : name,
                                 sender_id : jID,
                                 text: text,
-                                date : msg.messageTimestamp,
+                                date : msgDate,
                             };
                             const messagePayload = JSON.stringify(messageObject);
                             pythonClient.send(messagePayload);
+                            // Write new message on the users' message file
+                            await fs.appendFile(
+                                newMsgFilePath,
+                                newMessageModel,
+                                "utf8"
+                            );
+                            // Write new message on the list of new message
+                            await fs.appendFile(
+                                newMsgListFilePath,
+                                `[${msgDate}] - ${name} `,
+                                "utf8"
+                            );
+                        
                         }
                     }
                 }

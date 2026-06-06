@@ -1,26 +1,28 @@
-import websockets
-import asyncio
-import qrcode
-import json
-import threading
-import cmd
-import os
+import websockets  # Pour la gestion du websocket
+import asyncio  # Pour les fonctions asynchrone
+import qrcode  # Pour manipuler les QRCode
+import json  # Pour les traitements JSON
+import threading  # Pour la gestion des threads
+import cmd  # Pour la création d'un CLI
+import os  # Pour intéragir avec le système
+import subprocess  # Pour le lancement d'une commande system
+import getpass  # Pour récupérer le nome d'utilisateur
 
 
 class WTerminal(cmd.Cmd):
-    intro = r""" 
+    intro = r"""
 
-██╗    ██╗████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     
-██║    ██║╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║     
-██║ █╗ ██║   ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║     
-██║███╗██║   ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║     
+██╗    ██╗████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗
+██║    ██║╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║
+██║ █╗ ██║   ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║
+██║███╗██║   ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║
 ╚███╔███╔╝   ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗
  ╚══╝╚══╝    ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
-                                                           
-          
+
+
               [ WhatsApp Client for CLI ]  -  v1.0.0 (Alpha)
 
-    
+
    +--------------------------------------------------------------------+
    |                                                                    |
    |           ---> Type /help to see available commands <---           |
@@ -28,19 +30,26 @@ class WTerminal(cmd.Cmd):
    +--------------------------------------------------------------------+
 
     """
-    prompt = "┌──(wa_user㉿wterminal)-[~]\n└─$ "
+    USER = getpass.getuser()
+    prompt = f"┌──({USER}㉿wterminal)-[~]\n└─$ "
 
     def __init__(self):
         super().__init__()
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.contact_file = os.path.join(current_dir, "contacts.json")
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.contact_file = os.path.join(self.current_dir, "contacts.json")
+        self.message_folder_path = os.path.join(self.current_dir, "Messages")
         self.ws = None
         self.loop = asyncio.new_event_loop()
         self.net_threading = None
         self.qr_locked = False
         self.contacts = self.load_contacts()
+        self.create_m_folder()
 
-    # CONTACT SYSTEM
+    # Create message folder
+    def create_m_folder(self):
+        os.makedirs(self.message_folder_path, exist_ok=True)
+
+    """ IMPLEMENT CONTACT SYSTEM """
 
     # Load contact
     def load_contacts(self):
@@ -56,7 +65,8 @@ class WTerminal(cmd.Cmd):
     def save_contact(self):
         try:
             with open(self.contact_file, "w", encoding="utf-8") as f:
-                json.dumps(self.contacts, f, indent=4, ensure_ascii=False)
+                # Write change in the file, f or contact_file
+                json.dump(self.contacts, f, indent=4, ensure_ascii=False)
         except Exception as e:
             print(f"\n[!] Error occured when trying to save : {e}")
 
@@ -66,6 +76,8 @@ class WTerminal(cmd.Cmd):
             if jID == sender_id:
                 return f"{aliase.upper()}"
         return sender_id
+
+    """ CONNECT TO THE BACKEND """
 
     # Start network loop using asyncio
     def start_net_loop(self):
@@ -110,7 +122,7 @@ class WTerminal(cmd.Cmd):
                     break
 
         except Exception as e:
-            print(f"\n[-] Connection failed : {e}\n")
+            print(f"\n[-] Connection failed : {e}")
 
         # Clean and reconnect when an error is occured
         await self.clean_and_reconnect()
@@ -120,7 +132,7 @@ class WTerminal(cmd.Cmd):
             await self.ws.close()
         self.ws = None
         await asyncio.sleep(2)
-        print("\n[+] Reconnecting to the backend...\n")
+        print("[+] Reconnecting to the backend...")
         await self.connect_to_backend()
 
     # Alert for new message
@@ -137,7 +149,7 @@ class WTerminal(cmd.Cmd):
 
                     print(f"""
                     New message\n
-                    >>> {date} : {user_name} : {user_id} 
+                    >>> {date} : {user_name} : {user_id}
                     >>> {text}
                     """)
                     print(self.prompt, end="", flush=True)
@@ -145,8 +157,46 @@ class WTerminal(cmd.Cmd):
         except Exception as e:
             print(f"\n[!] Error occured : {e}\n")
 
+    """ TERMINAL IMPLEMENTATION FOR FRONT END """
+
+    # List of message or contact
+    def do_Show(self, arg):
+        # Create a list of argument by using split() method
+        commandSpliter = arg.split(" ", 1)
+        command = commandSpliter[0]
+        # Check if syntax is correct or not
+        if len(commandSpliter) < 1:
+            print("\n[!] Syntax error : Try Show message or Show contact instead.")
+        # Show result depending on what user
+        # want me do show. If this is a message or a contact.
+        if command == "message" or command == "Message":
+            print("Voici la liste de vos messages.")
+        elif command == "Contacts" or command == "contacts":
+            print("Voici la liste de vos contacts.")
+        elif command == "Chats" or command == "chats":
+            print("Voici la liste de vos conversation")
+        else:
+            return
+
+    # Add contact
+    def do_Add(self, arg):
+        # Creat a list of argument by using split() method
+        commandSpliter = arg.split(" ", 1)
+        user_name, user_jid = commandSpliter[0], commandSpliter[1]
+        newUser_message_file_path = os.path.join(self.message_folder_path, f"{user_name}.txt")
+        # Check if the syntax is correct or not.
+        if len(commandSpliter) < 2:
+            print("\n[!] Syntax error : Try Add name jid instead.")
+            return
+        # Add key-value and save using save_contact() methode
+        self.contacts[user_name] = user_jid
+        self.save_contact()
+        # Create the message file for the new user added
+        with open(newUser_message_file_path, "w", encoding="utf-8") as f:
+            pass
+
     # Connect to the backend
-    def do_connect(self, arg):
+    def do_Connect(self, arg):
         try:
             self.net_threading = threading.Thread(
                 target=self.start_net_loop, daemon=True
@@ -155,24 +205,20 @@ class WTerminal(cmd.Cmd):
         except Exception as e:
             print(f"\n[!] Error occured : {e}\n")
 
-    # Chats as a list [chats]
-    def do_chats(self, arg):
-        print("[+] List of chats : ")
-
     # Read message [read 1]
-    def do_read(self, arg):
+    def do_Read(self, arg):
         if not arg:
-            print("\n[!] Syntax error : Try read 1 instead.\n")
+            print("\n[!] Syntax error : Try Read 1 instead.\n")
             return
 
         print("[-] Lists of message :")
 
     # Send message [send 1 salut]
-    def do_send(self, arg):
+    def do_Send(self, arg):
         parts = arg.split(" ", 1)
 
         if len(parts) < 2:
-            print("\n[!] Syntax error : Try send 1 message instead.\n")
+            print("\n[!] Syntax error : Try Send 1 message instead.\n")
             return
 
         target, message = parts[0], parts[1]
@@ -193,7 +239,7 @@ class WTerminal(cmd.Cmd):
             print("\n[!] Error occured : Message not sent \n")
 
     # Exit WTerminal
-    def do_exit(self, arg):
+    def do_Exit(self, arg):
         print("\n[-] Closing WTerminal ...\n")
 
         if self.ws:
@@ -202,8 +248,23 @@ class WTerminal(cmd.Cmd):
         # Stop cmd loop
         return True
 
-    # Create an aliase for do_exit
-    do_quit = do_exit
+    # Clear console
+    def do_Clear(self, arg):
+        # Clear console using ANSI command
+        subprocess.run(
+            'cls' if os.name == 'nt' else 'clear', shell=True
+        )
+
+    # Create an aliase for do_command
+    do_Quit = do_Exit
+    do_quit = do_Exit
+    do_exit = do_Exit
+    do_add = do_Add
+    do_show = do_Show
+    do_connect = do_Connect
+    do_send = do_Send
+    do_cls = do_Clear
+    do_clear = do_Clear
 
 
 if __name__ == "__main__":

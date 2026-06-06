@@ -19,3 +19,17 @@ Il utilise une architecture Client/Serveur séparant la gestion du protocole Wha
 2. Configurer le backend : `cd backend && npm install`.
 3. Lancer le serveur et scanner le QR Code : `node index.js`.
 4. Lancer l'interface dans un autre terminal.
+
+Help et les fonctionnalités : (Pour le devéloppement seulment)
+# Msg
+- Chats
+- Read user@
+- Send user@ msg
+- Receive (automaticaly)
+
+# Contacts
+- Add
+
+# Global
+- Show items
+ 

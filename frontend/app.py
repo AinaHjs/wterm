@@ -7,6 +7,7 @@ import cmd  # Pour la création d'un CLI
 import os  # Pour intéragir avec le système
 import subprocess  # Pour le lancement d'une commande system
 import getpass  # Pour récupérer le nome d'utilisateur
+from collections import deque
 
 
 class WTerminal(cmd.Cmd):
@@ -38,6 +39,7 @@ class WTerminal(cmd.Cmd):
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         self.contact_file = os.path.join(self.current_dir, "contacts.json")
         self.message_folder_path = os.path.join(self.current_dir, "Messages")
+        self.new_msg_list_file_path = os.path.join(self.current_dir, "Messages", "newMessageList.txt")
         self.ws = None
         self.loop = asyncio.new_event_loop()
         self.net_threading = None
@@ -161,36 +163,56 @@ class WTerminal(cmd.Cmd):
 
     # List of message or contact
     def do_Show(self, arg):
+
         # Create a list of argument by using split() method
         commandSpliter = arg.split(" ", 1)
         command = commandSpliter[0]
+
         # Check if syntax is correct or not
         if len(commandSpliter) < 1:
-            print("\n[!] Syntax error : Try Show message or Show contact instead.")
+            print("\n[!] Syntax error : Try 'Show <command>' (e.g., Show New-message).")
+
         # Show result depending on what user
         # want me do show. If this is a message or a contact.
-        if command == "message" or command == "Message":
-            print("Voici la liste de vos messages.")
+        if command == "New-message" or command == "new-message":
+            try:
+                with open(self.new_msg_list_file_path, "r", encoding="utf-8") as f:
+                    list_of_new_msg = f.read()
+                    print(f"[ List of new message ] \n {list_of_new_msg}")
+            except Exception as e:
+                print(f"[!] Error : {e}")
         elif command == "Contacts" or command == "contacts":
-            print("Voici la liste de vos contacts.")
+            try:
+                for contact_key, contact_value in self.contacts.items():
+                    print(f"[{contact_key}] - {contact_value}")
+            except Exception as e:
+                print(f"[!] Error : {e}")
         elif command == "Chats" or command == "chats":
-            print("Voici la liste de vos conversation")
+            try:
+                for contact_key in self.contacts.keys():
+                    print(f"[-----< {contact_key} >-----]")
+            except Exception as e:
+                print(f"[!] Error : {e}")
         else:
             return
 
     # Add contact
     def do_Add(self, arg):
+
         # Creat a list of argument by using split() method
         commandSpliter = arg.split(" ", 1)
         user_name, user_jid = commandSpliter[0], commandSpliter[1]
         newUser_message_file_path = os.path.join(self.message_folder_path, f"{user_name}.txt")
+
         # Check if the syntax is correct or not.
         if len(commandSpliter) < 2:
-            print("\n[!] Syntax error : Try Add name jid instead.")
+            print("\n[!] Syntax error : Try 'Add <contact_name> <remodeJID>' (e.g., Add Aina xxxxx@s.whatsapp.com).")
             return
+        
         # Add key-value and save using save_contact() methode
         self.contacts[user_name] = user_jid
         self.save_contact()
+        
         # Create the message file for the new user added
         with open(newUser_message_file_path, "w", encoding="utf-8") as f:
             pass
@@ -207,18 +229,72 @@ class WTerminal(cmd.Cmd):
 
     # Read message [read 1]
     def do_Read(self, arg):
+
+        # Check if user typed arg after Read command
         if not arg:
-            print("\n[!] Syntax error : Try Read 1 instead.\n")
+            print("\n[!] Syntax error : Try 'Read <contact_name>' (e.g., Read Aina).\n")
             return
 
-        print("[-] Lists of message :")
+        # Lower username
+        user_name = arg.strip().lower()
+
+        # Check if contact_name exists on the contact file.
+        contact_found = None
+        for name in self.contacts.keys():
+            if name.lower() == user_name:
+                contact_found = name
+                break
+
+        # Show error if not contact_found
+        if not contact_found:
+            print(f"[!] Error : {arg} don't appear in your contact file")
+            return
+
+        # Prepare the path of the file we want do read and check if path exists
+        msg_to_read_path = os.path.join(self.message_folder_path, f"{user_name}.txt")
+        if not os.path.exists(msg_to_read_path):
+            print(f"[!] Error : the path {msg_to_read_path} do not exist.")
+            return
+
+        # Read last 2 messages
+        try:
+            with open(msg_to_read_path, "r", encoding="utf-8") as f:
+
+                # Get usefull lines
+                usefull_lines = (lines for lines in f if lines.strip())
+
+                # Read only the two last messages using deque method
+                two_last_msg = deque(usefull_lines, maxlen=2)
+
+                # Print 2 last message
+                print(f"[ Last 2 message with {contact_found.upper()} ]")
+                if not two_last_msg:
+                    print(f">>> No message with {contact_found.upper()}")
+                    return
+                else:
+                    for lines in two_last_msg:
+                        parts = lines.strip().split("-", maxsplit=2)
+
+                        # Check the length of lines
+                        if len(parts) == 3:
+                            date = parts[0].strip()
+                            username = parts[1].strip()
+                            text = parts[2].strip()
+
+                            print(f"{date} | {username.upper()} :")
+                            print(f" └─> {text}\n")
+                        else:
+                            print(f"{lines.strip()}")
+
+        except Exception as e:
+            print(f"[!] Error occured : {e}")
 
     # Send message [send 1 salut]
     def do_Send(self, arg):
         parts = arg.split(" ", 1)
 
         if len(parts) < 2:
-            print("\n[!] Syntax error : Try Send 1 message instead.\n")
+            print("\n[!] Syntax error : Try 'Send <contact_name> <message>' (e.g., Send Aina Salut!).\n")
             return
 
         target, message = parts[0], parts[1]
@@ -259,6 +335,7 @@ class WTerminal(cmd.Cmd):
     do_Quit = do_Exit
     do_quit = do_Exit
     do_exit = do_Exit
+    do_read = do_Read
     do_add = do_Add
     do_show = do_Show
     do_connect = do_Connect

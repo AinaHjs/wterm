@@ -2,7 +2,7 @@ import makeWASocket, {useMultiFileAuthState, DisconnectReason} from "@whiskeysoc
 import { WebSocketServer } from "ws";
 import pino from 'pino';
 import QRCode from 'qrcode-terminal';
-import fs from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from "url";
 
@@ -60,40 +60,66 @@ async function connectToWA() {
 
     // Listen on messages.upsert from whatsapp.
     sock.ev.on('messages.upsert', async (m) => {
-        if (m.type === 'notify') {
-            for (const msg of m.messages) {
-                if (!msg.key.fromMe) {
+        // For all messages on the websocket
+        for (const msg of m.messages){
+            // Is the type of this message a 'notify' ?
+            if (m.type === 'notify'){
+                // Is the message from me?
+                if (!msg.key.fromMe){
                     const jID = msg.key.remoteJid;
-                    const name = msg.pushName ||"Unknown";
+                    const defaultName = msg.pushName || "Unknown";
                     const text = msg.message?.conversation || msg.message?.extendedTextMessage;
                     const msgDate = msg.messageTimestamp;
-
-                    if (!text) continue;
-
-                    // Check if the sender is already on my contact list.
-                    let senderContactName = "Unknown"
-                    try {
-                        const contactsFilePath = path.join(ROOT_DIR,'Frontend','contacts.json');
+                    // Is the sender on my contact list?
+                    let isOnMyContact = false;
+                    let senderContactName = "Unknown";
+                    try{
+                        const contactsFilePath = path.join(ROOT_DIR,'frontend','contacts.json');
                         const contactData = await fs.readFile(contactsFilePath, "utf-8");
                         const contacts = JSON.parse(contactData);
+                        // Look for remoteJID inside the contacts.json
+                        for (const [contactName, contactJid] in Object.entries(contacts)){
+                            if (contactJid === jID){
+                                isOnMyContact = true;
+                                senderContactName = contactName;
+                                break;
+                            }
+                        }
+                    } catch (error){
+                        console.log(`[!] Contact error : ${error}`);
+                    } 
 
-                        senderContactName = Object.keys(contacts).find(key => contacts[key] === jID || jID.split("@")[0]);
-                    } catch (error) {
-                        senderContactName = jID.split("@")[0];
+                    // If sender is on my contact list
+                    if (isOnMyContact){
+                        // Is there a python client connected to the websocket
+                        if(pythonClient){
+                            const newMsgFilePath = path.join(ROOT_DIR, "frontend", "Messages", `${senderContactName.toLowerCase()}.txt`);
+                            const newMessageModel = `${msgDate}-${senderContactName}-${text}.`
+                            const messagePayload = {
+                                event: 'NEW_MESSAGE',
+                                sender_name : defaultName,
+                                sender_id : jID,
+                                text: text,
+                                date : msgDate,
+                            };
+                            // Try to write the message on dedicated file and alert the wterminal user
+                            try{
+                                // Write the message on dedicated file
+                                fs.appendFile(newMsgFilePath, newMessageModel, "utf8")
+                                // Alert user
+                                pythonClient.send(JSON.stringify(messagePayload));
+                            } catch(error){
+                                console.log(`[!] Message processing error : ${error}`);
+                            }
+                        } else if (!pythonClient) {
+                            const newMsgListFilePath = path.join(ROOT_DIR, "Frontend", "Messages", "newMessageList.txt");
+
+                        }
                     }
+                }
+            }
 
-                    // Send to Python client if connected
-                    if(pythonClient) {
-                        const messagePayload = {
-                            event: 'NEW_MESSAGE',
-                            sender_name : name,
-                            sender_id : jID,
-                            text: text,
-                            date : msgDate,
-                        };
-
-                        pythonClient.send(JSON.stringify(messagePayload));
-                    }
+        }
 
                     // Write new message on user_message_file and list_new_message_file
                     const newMsgFilePath = path.join(ROOT_DIR, "Frontend", "Messages", `${senderContactName.toLowerCase()}.txt`);
@@ -101,7 +127,6 @@ async function connectToWA() {
                     const newMessageModel = `${msgDate}-${senderContactName}-${text}.`
 
                     try {
-                        await fs.appendFile(newMsgFilePath, newMessageModel, "utf8");
                         await fs.appendFile(newMsgListFilePath, `[${msgDate}] : New message from ${senderContactName} \n>>> ${text}.`)
                     } catch (err) {
                         console.log(`[!] Error writing message file : ${err}`)
@@ -121,7 +146,6 @@ function create_ws() {
     wss.on('connection', async (ws) => {
         console.log(`[+] Wterminal client connected successfully...`);
         pythonClient = ws
-        connectToWA();
 
         // Send status if you are connected to whatsapp
         if (sock && sock.user) {
